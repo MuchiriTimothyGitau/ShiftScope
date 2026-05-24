@@ -1,0 +1,2 @@
+# ShiftScope
+Dependency Intelligence, Simplified.
