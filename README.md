@@ -46,3 +46,18 @@ Copy `.env.example` to `.env` and fill in actual values for local development.
 - User Manual: `ShiftScope_User_Manual.docx`
 
 This foundation will serve as the reference for our branch creation and development workflow.
+
+## Implementation Status
+
+### ✅ Backend & AI (Tim)
+- **scheduler/** — lockfile parsers (npm, requirements.txt, Cargo.lock, go.sum, yarn, pnpm, pipfile, poetry, gem, maven), registry version checker (npm, PyPI, crates.io, Go proxy, RubyGems, Maven), BullMQ queue setup, scan cycle orchestrator
+- **analysis_chain/** — 5-step Gemini prompt chain (summarise, breaking changes, cross-reference, fix generation, severity scoring), BullMQ worker
+- **delivery/** — Slack alert blocks builder, email HTML renderer (Resend), webhook with HMAC-SHA256 signing, multi-channel delivery worker
+- **supabase/migrations/** — Full DDL with RLS policies
+
+### 🟡 Frontend & DevOps (Joyce)
+- **dashboard/** — Scaffold ready for Next.js 14 implementation
+
+### 🟡 Data & Scraping (Ishrak)
+- **scraping_pipeline/** — Requirements.txt ready, Dockerfile with Playwright, awaiting scraper implementations
+- **supabase/** — Migration DDL ready, seed data pending
