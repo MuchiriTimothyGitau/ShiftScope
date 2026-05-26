@@ -19,6 +19,16 @@ export interface ScrapeJobPayload {
   new_version: string;
 }
 
+export interface AnalysisJob {
+  id: string;
+  scrape_id: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  created_at: string;
+  started_at?: string;
+  completed_at?: string;
+  error_message?: string;
+}
+
 export interface AnalysisJobPayload {
   scrape_id: string;
 }
