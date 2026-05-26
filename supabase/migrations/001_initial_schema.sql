@@ -66,11 +66,11 @@ CREATE INDEX idx_briefs_severity ON impact_briefs(severity);
 CREATE INDEX idx_deliveries_brief ON alert_deliveries(brief_id);
 
 ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
-CREATE POLICY 'project_owner_only' ON projects
+CREATE POLICY project_owner_only ON projects
   FOR ALL USING (auth.uid() = owner_uid);
 
 ALTER TABLE dependency_manifest ENABLE ROW LEVEL SECURITY;
-CREATE POLICY 'manifest_via_project' ON dependency_manifest
+CREATE POLICY manifest_via_project ON dependency_manifest
   FOR ALL USING (
     project_id IN (SELECT id FROM projects WHERE owner_uid = auth.uid())
   );

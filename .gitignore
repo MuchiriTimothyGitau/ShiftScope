@@ -42,6 +42,16 @@ logs/
 # Environment variables (keep .env.example)
 .env
 
+# Documentation (keep in repo root as reference, not tracked in code)
+*.docx
+
+# Supabase local generated files
+supabase/.branches/
+supabase/.temp/
+
+# Personal notes
+PROFILE.md
+
 # Build outputs
 /build
 /out
