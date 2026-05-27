@@ -1,19 +1,28 @@
-FROM python:3.11-slim
+# syntax=docker/dockerfile:1.6
+
+FROM mcr.microsoft.com/playwright/python:v1.44.0-jammy
 
 WORKDIR /app
 
-# Install Playwright system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 libcups2 \
-    libdrm2 libdbus-1-3 libxcb1 libxkbcommon0 libx11-6 \
-    libxcomposite1 libxdamage1 libxrandr2 libgbm1 libpango-1.0-0 \
-    libcairo2 libasound2 \
-    && rm -rf /var/lib/apt/lists/*
+# Non-root user (image already runs as root by default)
+RUN groupadd -r scraper && useradd -r -g scraper -u 1001 scraper \
+    && mkdir -p /app /ms-playwright \
+    && chown -R scraper:scraper /app /ms-playwright
 
-COPY requirements.txt .
+# Install Python deps (layer cached as long as requirements.txt unchanged)
+COPY --chown=scraper:scraper requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-RUN playwright install chromium
 
-COPY . .
+# Copy application code
+COPY --chown=scraper:scraper . .
 
-CMD ["python", "-m", "worker"]
+USER scraper
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+
+# Worker is a long-running BullMQ consumer; no health endpoint exposed by default.
+# If/when worker.py adds a /health server, add HEALTHCHECK + EXPOSE here.
+
+CMD ["python", "worker.py"]

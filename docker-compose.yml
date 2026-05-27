@@ -1,42 +1,60 @@
-version: '3.9'
+version: "3.9"
+
 services:
   redis:
     image: redis:7-alpine
-    ports: ['6379:6379']
-    volumes: ['redis_data:/data']
+    ports: ["6379:6379"]
+    volumes: ["redis_data:/data"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
 
   scheduler:
     build: ./scheduler
     env_file: .env
-    depends_on: [redis]
+    ports: ["9090:9090"]
+    depends_on:
+      redis:
+        condition: service_healthy
     restart: unless-stopped
 
   scraping-pipeline:
     build: ./scraping_pipeline
     env_file: .env
-    depends_on: [redis]
-    restart: unless-stopped
-    # Playwright requires additional deps
+    depends_on:
+      redis:
+        condition: service_healthy
     environment:
       - PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+    restart: unless-stopped
 
   analysis-chain:
     build: ./analysis_chain
     env_file: .env
-    depends_on: [redis]
+    ports: ["9091:9091"]
+    depends_on:
+      redis:
+        condition: service_healthy
     restart: unless-stopped
 
   delivery-engine:
     build: ./delivery
     env_file: .env
-    depends_on: [redis]
+    ports: ["9092:9092"]
+    depends_on:
+      redis:
+        condition: service_healthy
     restart: unless-stopped
 
-  dashboard:
-    build: ./dashboard
-    env_file: .env
-    ports: ['3000:3000']
-    restart: unless-stopped
+  # Dashboard is deployed separately on Vercel (per README).
+  # If local dev becomes useful, add a service here once dashboard/Dockerfile exists.
 
 volumes:
   redis_data:
+
+networks:
+  default:
+    name: shiftscope
