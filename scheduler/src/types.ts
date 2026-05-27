@@ -17,6 +17,8 @@ export interface ScrapeJobPayload {
   ecosystem: Ecosystem;
   old_version: string;
   new_version: string;
+  risk_level?: 'none' | 'low' | 'medium' | 'high' | 'critical';
+  typosquat_warning?: string[];
 }
 
 export interface AnalysisJob {
@@ -49,6 +51,61 @@ export interface ImpactBrief {
   estimated_fix_minutes: number;
   safe_to_upgrade: boolean;
   chain_trace: ChainTrace;
+  risk_assessment?: RiskAssessment;
+  trend_signals?: TrendSignal[];
+  upgrade_sentiment?: 'positive' | 'negative' | 'mixed' | 'unknown';
+}
+
+export interface RiskAssessment {
+  overall_risk_score: number;
+  risk_level: 'none' | 'low' | 'medium' | 'high' | 'critical';
+  signals: RiskSignal[];
+  malware_indicators: MalwareIndicator[];
+  supply_chain_indicators: SupplyChainIndicator[];
+  typosquat_result: {
+    is_suspicious: boolean;
+    lookalike_of: string | null;
+    signals: string[];
+  } | null;
+}
+
+export interface RiskSignal {
+  category: string;
+  description: string;
+  severity: 'info' | 'low' | 'medium' | 'high' | 'critical';
+  score: number;
+}
+
+export interface MalwareIndicator {
+  type: string;
+  description: string;
+  confidence: number;
+  evidence: string[];
+}
+
+export interface SupplyChainIndicator {
+  type: string;
+  description: string;
+  risk: 'low' | 'medium' | 'high';
+}
+
+export interface TrendSignal {
+  category: string;
+  signal: string;
+  frequency: string;
+  sources: string[];
+  extracted_at: string;
+}
+
+export interface TrendAnalysis {
+  dep_name: string;
+  ecosystem: string;
+  community_sentiment: 'positive' | 'negative' | 'mixed' | 'unknown';
+  common_issues: string[];
+  migration_patterns: string[];
+  risk_trend: 'improving' | 'stable' | 'deteriorating' | 'unknown';
+  upgrade_recommendation: 'safe' | 'cautious' | 'avoid' | 'investigate';
+  supporting_evidence: string[];
 }
 
 export interface BreakingChange {
@@ -74,6 +131,8 @@ export interface ChainTrace {
   step3?: PromptResponse;
   step4?: { fixes: any[] };
   step5?: PromptResponse;
+  step6?: PromptResponse;
+  step7?: PromptResponse;
 }
 
 export interface PromptResponse {

@@ -1,4 +1,6 @@
 import { Ecosystem } from './types';
+import { registryCircuitBreaker } from './resilience/circuit-breaker';
+import { RateLimiter } from './security/rate-limiter';
 
 const REGISTRY_TIMEOUT = parseInt(process.env.REGISTRY_CHECK_TIMEOUT_MS || '5000', 10);
 
@@ -9,46 +11,8 @@ interface RegistryResponse {
 const cache = new Map<string, { version: string; timestamp: number }>();
 const CACHE_TTL = 60_000;
 
-export async function checkRegistryVersion(name: string, ecosystem: Ecosystem): Promise<string | null> {
-  const cacheKey = `${ecosystem}:${name}`;
-  const cached = cache.get(cacheKey);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return cached.version;
-  }
-
-  try {
-    let version: string | null = null;
-
-    switch (ecosystem) {
-      case 'npm':
-        version = await checkNpmRegistry(name);
-        break;
-      case 'pypi':
-        version = await checkPyPIRegistry(name);
-        break;
-      case 'crates':
-        version = await checkCratesRegistry(name);
-        break;
-      case 'go':
-        version = await checkGoRegistry(name);
-        break;
-      case 'gem':
-        version = await checkGemRegistry(name);
-        break;
-      case 'maven':
-        version = await checkMavenRegistry(name);
-        break;
-    }
-
-    if (version) {
-      cache.set(cacheKey, { version, timestamp: Date.now() });
-    }
-
-    return version;
-  } catch {
-    return null;
-  }
-}
+const rateLimiter = new RateLimiter();
+rateLimiter.connect().catch(() => {});
 
 async function fetchJson(url: string): Promise<any> {
   const controller = new AbortController();
@@ -95,4 +59,54 @@ async function checkMavenRegistry(name: string): Promise<string | null> {
     `https://search.maven.org/solrsearch/select?q=g:${encodeURIComponent(group)}+AND+a:${encodeURIComponent(artifact)}&rows=1&wt=json`
   );
   return data?.response?.docs?.[0]?.latestVersion ?? null;
+}
+
+const registryCheckers: Record<Ecosystem, (name: string) => Promise<string | null>> = {
+  npm: checkNpmRegistry,
+  pypi: checkPyPIRegistry,
+  crates: checkCratesRegistry,
+  go: checkGoRegistry,
+  gem: checkGemRegistry,
+  maven: checkMavenRegistry,
+};
+
+export async function checkRegistryVersion(name: string, ecosystem: Ecosystem): Promise<string | null> {
+  const cacheKey = `${ecosystem}:${name}`;
+  const cached = cache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.version;
+  }
+
+  const allowed = await rateLimiter.middleware(ecosystem, 'registry');
+  if (!allowed) {
+    console.warn(`Rate limited: ${ecosystem} registry check for ${name}`);
+    return cached?.version ?? null;
+  }
+
+  const checker = registryCheckers[ecosystem];
+  if (!checker) return null;
+
+  const result = await registryCircuitBreaker.call(
+    ecosystem,
+    () => checker(name),
+    () => {
+      console.warn(`Fallback: using cached version for ${name} (${ecosystem} registry may be down)`);
+      return cached?.version ?? null;
+    },
+  );
+
+  if (result) {
+    cache.set(cacheKey, { version: result, timestamp: Date.now() });
+  }
+
+  return result;
+}
+
+export function getRegistryMetrics(): Record<string, { state: string; failures: number; successes: number }> {
+  const ecosystems: Ecosystem[] = ['npm', 'pypi', 'crates', 'go', 'gem', 'maven'];
+  const metrics: Record<string, any> = {};
+  for (const eco of ecosystems) {
+    metrics[eco] = registryCircuitBreaker.getMetrics(eco);
+  }
+  return metrics;
 }

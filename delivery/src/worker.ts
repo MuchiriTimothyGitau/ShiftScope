@@ -5,6 +5,11 @@ import { sendSlackAlert } from './slack';
 import { sendEmailAlert } from './email';
 import { sendWebhookAlert } from './webhook';
 import { ImpactBrief } from '../../scheduler/src/types';
+import { assertValidEnv } from '../../scheduler/src/security/env-validator';
+import { setupGracefulShutdown, registerWorkerShutdown, registerRedisShutdown } from '../../scheduler/src/resilience/shutdown';
+
+assertValidEnv('delivery');
+setupGracefulShutdown();
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
@@ -55,41 +60,62 @@ async function processDeliveryJob(job: any): Promise<void> {
 
   for (const channel of channels) {
     try {
+      let success = false;
       switch (channel) {
         case 'slack':
           await sendSlackAlert(impactBrief);
+          success = true;
           break;
         case 'email':
           if (process.env.ALERT_EMAIL_TO) {
             await sendEmailAlert(impactBrief, process.env.ALERT_EMAIL_TO);
+            success = true;
           }
           break;
         case 'webhook':
           if (process.env.WEBHOOK_URL) {
             await sendWebhookAlert(impactBrief, process.env.WEBHOOK_URL);
+            success = true;
           }
           break;
         case 'dashboard':
+          success = true;
           break;
+      }
+
+      await supabase.from('alert_deliveries').insert({
+        brief_id,
+        channel,
+        status: success ? 'sent' : 'failed',
+        delivered_at: success ? new Date().toISOString() : null,
+      });
+
+      if (!success) {
+        console.warn(`Delivery to ${channel} produced no result`);
       }
     } catch (err) {
       console.error(`Delivery to ${channel} failed:`, err);
+      await supabase.from('alert_deliveries').insert({
+        brief_id,
+        channel,
+        status: 'failed',
+        error_detail: (err as Error).message,
+      }).catch(e => console.error('Failed to log delivery failure:', e));
     }
   }
-
-  await supabase.from('alert_deliveries').insert({
-    brief_id,
-    channel: channels.join(','),
-    status: 'sent',
-    delivered_at: new Date().toISOString(),
-  });
 }
 
 const worker = new Worker('delivery', processDeliveryJob, {
   connection,
   concurrency: 5,
   lockDuration: 60_000,
+  settings: {
+    backoffStrategy: (attemptsMade: number) => Math.min(attemptsMade * 10000, 120_000),
+  },
 });
+
+registerWorkerShutdown(worker);
+registerRedisShutdown(connection);
 
 worker.on('completed', (job) => {
   console.log(`Delivery job ${job.id} completed`);
@@ -99,4 +125,8 @@ worker.on('failed', (job, err) => {
   console.error(`Delivery job ${job?.id} failed:`, err);
 });
 
-console.log('Delivery engine worker started');
+worker.on('drained', () => {
+  console.log('Delivery queue drained');
+});
+
+console.log('Delivery engine worker started (with resilience + monitoring)');

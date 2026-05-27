@@ -2,6 +2,12 @@ import { createClient } from '@supabase/supabase-js';
 import { checkRegistryVersion } from './registry';
 import { scrapeQueue } from './queue';
 import { parseLockfile } from './lockfile_parser';
+import { assessRisk } from './security';
+import { assertValidEnv } from './security/env-validator';
+import { setupGracefulShutdown, registerQueueShutdown } from './resilience/shutdown';
+import { startHealthServer } from './health-server';
+
+assertValidEnv('scheduler');
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
@@ -18,12 +24,16 @@ export async function runScanCycle() {
   for (const dep of deps ?? []) {
     const latestVersion = await checkRegistryVersion(dep.name, dep.ecosystem);
     if (latestVersion && latestVersion !== dep.pinned_version) {
+      const risk = assessRisk(dep.name, dep.ecosystem, { name: dep.name, latestVersion }, dep.pinned_version);
+
       await scrapeQueue.add('scrape-dep', {
         dep_id: dep.id,
         dep_name: dep.name,
         ecosystem: dep.ecosystem,
         old_version: dep.pinned_version,
         new_version: latestVersion,
+        risk_level: risk.risk_level,
+        typosquat_warning: risk.typosquat?.is_suspicious ? risk.typosquat.signals : undefined,
       });
     }
   }
@@ -48,7 +58,7 @@ export async function processLockfile(
   if (batch.length === 0) return;
 
   const { error } = await supabase.from('dependency_manifest').upsert(batch, {
-    onConflict: 'project_id,name',
+    onConflict: 'project_id, name, ecosystem',
     ignoreDuplicates: false,
   });
 
@@ -56,6 +66,10 @@ export async function processLockfile(
 }
 
 if (require.main === module) {
+  setupGracefulShutdown();
+  registerQueueShutdown(scrapeQueue);
+  startHealthServer();
+
   const interval = parseInt(process.env.SCAN_INTERVAL_MINUTES || '15', 10) * 60_000;
 
   const run = async () => {
