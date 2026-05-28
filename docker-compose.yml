@@ -49,6 +49,15 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+    dashboard:
+    build: ./dashboard
+    env_file: .env
+    ports: ["3000:3000"]
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
   # Dashboard is deployed separately on Vercel (per README).
   # If local dev becomes useful, add a service here once dashboard/Dockerfile exists.
 
