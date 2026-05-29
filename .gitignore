@@ -59,6 +59,9 @@ pnpm-lock.yaml
 # AI Studio exports (corrupted zip — re-export needed)
 aistudiozip/
 
+# AI Studio full clone (merged into root)
+aistudio_full/
+
 # Temp scripts
 generate-service-key.js
 
@@ -66,3 +69,4 @@ generate-service-key.js
 /build
 /out
 /tmp
+/server.js
