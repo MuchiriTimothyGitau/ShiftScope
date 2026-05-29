@@ -7,6 +7,19 @@ on:
     branches: [main, dev/setup-phase]
 
 jobs:
+  # Passing — root Express server builds and type-checks
+  root-build:
+    name: Build (Express server)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install
+      - run: npx tsc --noEmit
+      - run: npx vite build
+
   # Passing suites — these gate the green check
   tests:
     name: Tests (scheduler)

@@ -62,6 +62,9 @@ aistudiozip/
 # AI Studio full clone (merged into root)
 aistudio_full/
 
+# Old dashboard (replaced by root src/ + server.ts)
+dashboard/
+
 # Temp scripts
 generate-service-key.js
 
