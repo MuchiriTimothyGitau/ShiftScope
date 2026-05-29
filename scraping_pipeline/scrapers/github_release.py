@@ -34,8 +34,16 @@ from tenacity import (
 
 logger = logging.getLogger("shiftscope.scrapers.github_release")
 
-# Bright Data Scraping Browser WebSocket endpoint — set in .env
-BD_WS = os.environ["BD_SCRAPING_BROWSER_WS"]
+# Bright Data Scraping Browser WebSocket endpoint — read lazily so tests can import
+# without the env var being set.
+def _get_bd_ws() -> str:
+    val = os.environ.get("BD_SCRAPING_BROWSER_WS")
+    if not val:
+        raise RuntimeError(
+            "BD_SCRAPING_BROWSER_WS is not set — Bright Data Scraping Browser "
+            "cannot connect. Set it in .env or export it before running."
+        )
+    return val
 
 # Error code SS-001: Scraping Browser connection timeout
 #   Recovery: retry with exponential backoff × 3, then skip source
@@ -79,7 +87,7 @@ async def scrape_github_release(
         # Connect to BrightData's Scraping Browser over CDP.
         # This replaces a local browser launch and routes all traffic through
         # BrightData's residential proxy pool with automatic CAPTCHA solving.
-        browser = await p.chromium.connect_over_cdp(BD_WS)
+        browser = await p.chromium.connect_over_cdp(_get_bd_ws())
         context = await browser.new_context(
             # Mimic a real browser fingerprint expected by GitHub
             user_agent=(

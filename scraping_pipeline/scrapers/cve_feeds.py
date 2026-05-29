@@ -35,8 +35,16 @@ from tenacity import (
 
 logger = logging.getLogger("shiftscope.scrapers.cve_feeds")
 
-BD_SERP_URL = os.environ["BD_SERP_URL"]
-BD_SERP_KEY = os.environ["BD_SERP_API_KEY"]
+
+def _get_serp_config() -> tuple[str, str]:
+    url = os.environ.get("BD_SERP_URL")
+    key = os.environ.get("BD_SERP_API_KEY")
+    if not url or not key:
+        raise RuntimeError(
+            "BD_SERP_URL and BD_SERP_API_KEY must be set "
+            "to use the Bright Data SERP API."
+        )
+    return url, key
 
 # High-credibility advisory domains — score 1.0
 _HIGH_CREDIBILITY_DOMAINS = frozenset(
@@ -121,15 +129,16 @@ async def fetch_cve_signals(
     results: list[dict] = []
     seen_urls: set[str] = set()
 
+    serp_url, serp_key = _get_serp_config()
     async with httpx.AsyncClient(timeout=httpx.Timeout(15.0, connect=5.0)) as client:
         for template in _CVE_QUERIES:
             query = template.format(name=name, new_version=new_version)
             logger.debug("CVE SERP query: %s", query)
 
             resp = await client.post(
-                BD_SERP_URL,
+                serp_url,
                 headers={
-                    "Authorization": f"Bearer {BD_SERP_KEY}",
+                    "Authorization": f"Bearer {serp_key}",
                     "Content-Type": "application/json",
                 },
                 json={"query": query, "num_results": 5, "country": country},
