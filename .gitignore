@@ -52,6 +52,16 @@ supabase/.temp/
 # Personal notes
 PROFILE.md
 
+# Package lock files (auto-generated)
+package-lock.json
+pnpm-lock.yaml
+
+# AI Studio exports (corrupted zip — re-export needed)
+aistudiozip/
+
+# Temp scripts
+generate-service-key.js
+
 # Build outputs
 /build
 /out
