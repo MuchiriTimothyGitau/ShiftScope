@@ -38,24 +38,21 @@ from tenacity import (
 logger = logging.getLogger("shiftscope.scrapers.github_issues")
 
 # -----------------------------------------------------------------------
-# BrightData Web Unlocker proxy configuration
-# Credentials are read from the environment (see scraping_pipeline/.env).
+# BrightData Web Unlocker proxy configuration — read lazily so tests can
+# import the module without env vars being set.
 # -----------------------------------------------------------------------
-_BD_USER = os.environ["BRIGHT_DATA_USERNAME"]
-_BD_PASS = os.environ["BRIGHT_DATA_PASSWORD"]
-_BD_HOST = os.environ["BD_UNLOCKER_HOST"]      # brd.superproxy.io
-_BD_PORT = os.environ["BD_UNLOCKER_PORT"]      # 22225
-
-UNLOCKER_PROXY = {
-    "http://": (
-        f"http://brd-customer-{_BD_USER}-zone-unblocker:{_BD_PASS}"
-        f"@{_BD_HOST}:{_BD_PORT}"
-    ),
-    "https://": (
-        f"http://brd-customer-{_BD_USER}-zone-unblocker:{_BD_PASS}"
-        f"@{_BD_HOST}:{_BD_PORT}"
-    ),
-}
+def _get_unlocker_proxy() -> dict[str, str]:
+    user = os.environ.get("BRIGHT_DATA_USERNAME")
+    pw = os.environ.get("BRIGHT_DATA_PASSWORD")
+    host = os.environ.get("BD_UNLOCKER_HOST", "brd.superproxy.io")
+    port = os.environ.get("BD_UNLOCKER_PORT", "22225")
+    if not user or not pw:
+        raise RuntimeError(
+            "BRIGHT_DATA_USERNAME and BRIGHT_DATA_PASSWORD must be set "
+            "to use the Web Unlocker proxy."
+        )
+    creds = f"http://brd-customer-{user}-zone-unblocker:{pw}@{host}:{port}"
+    return {"http://": creds, "https://": creds}
 
 # Default labels that indicate a breaking change or regression
 DEFAULT_BREAKING_LABELS = ["breaking-change", "regression", "bug"]
@@ -118,7 +115,7 @@ async def fetch_breaking_issues(
     )
 
     async with httpx.AsyncClient(
-        proxies=UNLOCKER_PROXY,
+        proxies=_get_unlocker_proxy(),
         # BrightData intercepts TLS for proxy inspection — disable peer verify
         verify=False,
         timeout=httpx.Timeout(20.0, connect=10.0),
