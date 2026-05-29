@@ -1,0 +1,41 @@
+# syntax=docker/dockerfile:1.6
+
+# ---------- Stage 1: builder ----------
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci
+
+COPY tsconfig.json ./
+COPY src ./src
+
+RUN npm run build
+
+# Prune to production deps for copy into runtime
+RUN npm prune --omit=dev
+
+# ---------- Stage 2: runtime ----------
+FROM node:20-alpine AS runtime
+
+RUN apk add --no-cache wget tini
+
+WORKDIR /app
+
+# Non-root user
+RUN addgroup -S app && adduser -S -G app -u 1001 appuser
+
+COPY --from=builder --chown=appuser:app /app/node_modules ./node_modules
+COPY --from=builder --chown=appuser:app /app/dist ./dist
+COPY --chown=appuser:app package*.json ./
+
+USER appuser
+
+EXPOSE 9090
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+  CMD wget --quiet --tries=1 --spider http://localhost:9090/health || exit 1
+
+ENTRYPOINT ["/sbin/tini", "--"]
+CMD ["node", "dist/index.js"]

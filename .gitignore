@@ -1,0 +1,72 @@
+# Node modules
+node_modules/
+dist/
+.env
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+*.pyw
+*.rej
+*.supp
+*.sw?
+
+# Playwright
+playwright-report/
+test-results/
+.trace/
+*.zip
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Environment variables (keep .env.example)
+.env
+
+# Documentation (keep in repo root as reference, not tracked in code)
+*.docx
+
+# Supabase local generated files
+supabase/.branches/
+supabase/.temp/
+
+# Personal notes
+PROFILE.md
+
+# Package lock files (auto-generated)
+package-lock.json
+pnpm-lock.yaml
+
+# AI Studio exports (corrupted zip — re-export needed)
+aistudiozip/
+
+# AI Studio full clone (merged into root)
+aistudio_full/
+
+# Temp scripts
+generate-service-key.js
+
+# Build outputs
+/build
+/out
+/tmp
+/server.js
