@@ -116,7 +116,7 @@ async def fetch_community_signals(
             )
             resp.raise_for_status()
 
-            organic = resp.json().get("organic", [])
+            organic = (await resp.json()).get("organic", [])
             for item in organic:
                 item_url: str = item.get("link", "")
                 # Deduplicate by URL across all queries

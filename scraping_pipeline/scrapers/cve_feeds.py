@@ -145,7 +145,7 @@ async def fetch_cve_signals(
             )
             resp.raise_for_status()
 
-            for item in resp.json().get("organic", []):
+            for item in (await resp.json()).get("organic", []):
                 url: str = item.get("link", "")
                 if not url or url in seen_urls:
                     continue
