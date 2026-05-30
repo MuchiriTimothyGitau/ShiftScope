@@ -147,7 +147,7 @@ async def fetch_breaking_issues(
             )
             return []
 
-        issues: list[dict] = resp.json()
+        issues: list[dict] = await resp.json()
 
     logger.info(
         "Fetched %d issues for %s/%s",
