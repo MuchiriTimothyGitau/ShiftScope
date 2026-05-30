@@ -1,3 +1,4 @@
+shiftscope-166148367365.europe-west2.run.app/
 # ShiftScope — Autonomous Dependency Intelligence Agent
 
 Monitors open-source dependency ecosystems (npm, PyPI), detects breaking changes, pre-CVE signals, supply chain risks, and delivers actionable alerts. Combines an **Express API server** (BullMQ + Gemini + Cognee Knowledge Graph + TriggerWare automation) with dedicated background workers.
