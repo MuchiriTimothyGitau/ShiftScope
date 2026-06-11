@@ -6,11 +6,11 @@ import { buildStep4Prompt } from './prompts/step4_generate_fix';
 import { buildStep5Prompt } from './prompts/step5_score_severity';
 import { securityScan } from './security/scanner';
 import { analyzeTrends } from './trends/analyzer';
-import { ScrapeBundle, ImpactBrief, ChainTrace } from '../../scheduler/src/types';
+import { ScrapeBundle, ImpactBrief, ChainTrace } from './types.js';
 
 const genai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-const pro = genai.getGenerativeModel({ model: 'gemini-1.5-pro' });
-const flash = genai.getGenerativeModel({ model: 'gemini-1.5-flash' });
+const pro = genai.getGenerativeModel({ model: 'gemini-2.5-pro' });
+const flash = genai.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
 function safeJsonParse(text: string, fallback: any): any {
   try {

@@ -1,38 +1,23 @@
-shiftscope-166148367365.europe-west2.run.app/
 # ShiftScope — Autonomous Dependency Intelligence Agent
 
 Monitors open-source dependency ecosystems (npm, PyPI), detects breaking changes, pre-CVE signals, supply chain risks, and delivers actionable alerts. Combines an **Express API server** (BullMQ + Gemini + Cognee Knowledge Graph + TriggerWare automation) with dedicated background workers.
-
-## Team
-
-| Role | Member | Responsibilities |
-|---|---|---|
-| **Backend & AI** | Tim | Express server, AI analysis chain, security/resilience layer, Gemini + Cognee + TriggerWare integration |
-| **Infra & Docker** | Promise / Yira | Docker Compose, CI/CD pipelines, Upstash Redis |
-| **Frontend** | Joyce | React SPA dashboard (Vite + Tailwind), Supabase client |
-| **Scrapers & Demo** | Ishrak | Bright Data web scraping, CVE feeds, demo video + presentation |
-| **Backend Support** | Hammad | Lockfile parsers, API diff, Zod schemas, cache layer |
-| **Testing / QA** | Hussnain | Unit tests, integration tests, regression testing |
 
 ## Project Structure
 
 ```
 shiftscope/
 ├── server.ts                 # Express API server (BullMQ + Gemini + Cognee + TriggerWare)
-├── middleware/                # Security & resilience (env validation, rate limiter, graceful shutdown)
+├── middleware/                # Security & resilience (env validation, rate limiter, graceful shutdown, Zod validation)
 ├── src/                      # React SPA dashboard (Vite + Tailwind)
+│   ├── components/           # UI components
+│   └── data/                 # Mock data and presets
 ├── scheduler/                # Module 1 — Scan orchestrator + lockfile parsers + security/resilience layer
 ├── analysis_chain/           # Module 2 — AI analysis (7-step Gemini chain)
 ├── delivery/                 # Module 3 — Alert delivery engine (Slack, email, webhook)
 ├── scraping_pipeline/        # Python Bright Data + Playwright scrapers
 ├── supabase/                 # Shared SQL schema & seed data
-├── types/                    # Shared TypeScript interfaces
 ├── docker-compose.yml        # All services (Express server + Redis + workers)
-├── Dockerfile                # Express server container
-├── package.json              # Root: Express server + frontend deps
-├── vite.config.ts            # Vite dev server config
-├── tsconfig.json             # TypeScript config
-└── .env.example
+└── Dockerfile                # Express server container
 ```
 
 ## Quick Start
@@ -54,7 +39,7 @@ npm install --prefix analysis_chain
 npm install --prefix delivery
 ```
 
-### Run Migration
+### Database Migration
 
 Open Supabase Studio SQL editor at `https://supabase.com/dashboard/project/<project-id>/sql/new`
 and paste `supabase/migrations/001_initial_schema.sql` then `supabase/seed.sql`.
@@ -79,15 +64,16 @@ Open `http://localhost:3000` for the dashboard.
 
 ## API Endpoints
 
-| Endpoint | Method | Description |
-|---|---|---|
-| `/api/analyze` | POST | Sync dependency analysis (Gemini or local fallback) |
-| `/api/analyze-queue` | POST | Async analysis via BullMQ queue (or in-memory fallback) |
-| `/api/status/:jobId` | GET | Poll async job progress and result |
-| `/api/autonomous-agent` | POST | Full agent pipeline (Bright Data + Cognee + TriggerWare) |
-| `/api/redis-stats` | GET | Queue telemetry (waiting, active, completed, failed) |
-| `/api/redis-purge` | POST | Drain all queue jobs |
-| `/api/download-zip` | GET | Download project source archive |
+| Endpoint | Method | Validation | Description |
+|---|---|---|---|
+| `/health` | GET | — | Health check (used by Docker/K8s probes) |
+| `/api/analyze` | POST | Zod | Sync dependency analysis (Gemini or local fallback) |
+| `/api/analyze-queue` | POST | Zod | Async analysis via BullMQ queue (or in-memory fallback) |
+| `/api/status/:jobId` | GET | Zod | Poll async job progress and result |
+| `/api/autonomous-agent` | POST | Zod | Full agent pipeline (Bright Data + Cognee + TriggerWare) |
+| `/api/redis-stats` | GET | — | Queue telemetry (waiting, active, completed, failed) |
+| `/api/redis-purge` | POST | — | Drain all queue jobs |
+| `/api/download-zip` | GET | — | Download project source archive |
 
 ## Architecture
 
@@ -107,6 +93,7 @@ The **Express server** is the primary API gateway — it serves the React fronte
 | Feature | Location | Purpose |
 |---|---|---|
 | Env validation | `middleware/env-validator.ts` | Warn on startup if keys are missing |
+| Zod API validation | `middleware/validation.ts` | Validate request bodies and params with schemas |
 | Graceful shutdown | `middleware/shutdown.ts` | SIGTERM drains workers, closes Redis, exits. 30s timeout |
 | Rate limiter | `middleware/rate-limiter.ts` | Redis sliding-window per IP (30/min analyze, 20/min agent) |
 | Circuit breaker | `scheduler/src/resilience/circuit-breaker.ts` | 5 failures -> open 60s |
@@ -126,4 +113,19 @@ The **Express server** is the primary API gateway — it serves the React fronte
 | Workers | Railway / Fly.io | Separate services per worker |
 | Database | Supabase Cloud (free tier) | Already provisioned |
 | Redis | Upstash (free 10MB) | BullMQ queue backend |
-| AI | Gemini API (free tier) | 60 req/min |
+| AI | Gemini API (free tier) | Uses gemini-2.0-flash / gemini-2.5-pro models |
+
+## CI/CD
+
+The project uses GitHub Actions for CI:
+- **Lint**: TypeScript type-checking (`tsc --noEmit`)
+- **Build**: Vite frontend build + esbuild server bundle
+- **Tests**: Vitest for scheduler, analysis_chain, delivery modules
+- **Scraping tests**: Pytest with Playwright (requires browser install)
+
+## Development Notes
+
+- Uses `@google/genai` SDK for Gemini API access
+- Frontend is built with React 18 + Vite + Tailwind CSS 4
+- All API endpoints are validated with Zod schemas
+- Cross-platform build scripts (no `rm -rf`, uses Node.js `fs.rmSync`)

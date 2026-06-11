@@ -1,5 +1,5 @@
 import { WebClient } from '@slack/web-api';
-import { ImpactBrief } from '../../scheduler/src/types';
+import { ImpactBrief } from './types.js';
 
 const slack = new WebClient(process.env.SLACK_BOT_TOKEN);
 

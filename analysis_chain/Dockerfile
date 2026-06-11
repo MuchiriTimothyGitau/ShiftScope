@@ -1,21 +1,19 @@
 # syntax=docker/dockerfile:1.6
 
-# ---------- Stage 1: builder ----------
 FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-COPY package*.json ./
+COPY analysis_chain/package*.json ./
 RUN npm ci
 
-COPY tsconfig.json ./
-COPY src ./src
+COPY analysis_chain/tsconfig.json ./
+COPY analysis_chain/src ./src
+COPY scheduler/src ./scheduler/src
 
 RUN npm run build
-
 RUN npm prune --omit=dev
 
-# ---------- Stage 2: runtime ----------
 FROM node:20-alpine AS runtime
 
 RUN apk add --no-cache wget tini
@@ -26,7 +24,7 @@ RUN addgroup -S app && adduser -S -G app -u 1001 appuser
 
 COPY --from=builder --chown=appuser:app /app/node_modules ./node_modules
 COPY --from=builder --chown=appuser:app /app/dist ./dist
-COPY --chown=appuser:app package*.json ./
+COPY --from=builder --chown=appuser:app analysis_chain/package*.json ./
 
 USER appuser
 

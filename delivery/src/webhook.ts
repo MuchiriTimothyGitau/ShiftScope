@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from 'crypto';
-import { ImpactBrief } from '../../scheduler/src/types';
+import { ImpactBrief } from './types.js';
 
 export function signPayload(payload: string, secret: string): string {
   return 'sha256=' + createHmac('sha256', secret).update(payload).digest('hex');

@@ -7,21 +7,31 @@ on:
     branches: [main, dev/setup-phase]
 
 jobs:
-  # Passing — root Express server builds and type-checks
-  root-build:
-    name: Build (Express server)
+  root-lint:
+    name: Lint (Express server + frontend)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - run: npm install
+      - run: npm ci
+      - run: npx tsc --noEmit
+
+  root-build:
+    name: Build (Express server + Vite frontend)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm ci
       - run: npx tsc --noEmit
       - run: npx vite build
+      - run: npx esbuild server.ts --bundle --platform=node --format=esm --packages=external --outfile=server.js
 
-  # Passing suites — these gate the green check
-  tests:
+  scheduler-tests:
     name: Tests (scheduler)
     runs-on: ubuntu-latest
     defaults:
@@ -32,10 +42,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - run: npm install
+      - run: npm ci
       - run: npx vitest run
 
-  # Passing after fix (chain mock updated for vitest v4 + 7-step chain)
   analysis-tests:
     name: Tests (analysis_chain)
     runs-on: ubuntu-latest
@@ -47,14 +56,26 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - run: npm install
+      - run: npm ci
       - run: npx vitest run
 
-  # Known-failing — scraping_pipeline needs playwright install chromium
-  known-failing:
-    name: Known-failing (non-blocking)
+  delivery-tests:
+    name: Tests (delivery)
     runs-on: ubuntu-latest
-    continue-on-error: true
+    defaults:
+      run:
+        working-directory: delivery
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm ci
+      - run: npx vitest run
+
+  scraping-tests:
+    name: Tests (scraping_pipeline)
+    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: scraping_pipeline
@@ -64,5 +85,7 @@ jobs:
         with:
           python-version: '3.11'
       - run: pip install -r requirements-dev.txt
-      - run: python -m playwright install chromium 2>/dev/null || true
+      - name: Install Playwright browsers
+        run: |
+          python -m playwright install --with-deps chromium
       - run: pytest -v

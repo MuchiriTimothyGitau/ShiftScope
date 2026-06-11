@@ -1,5 +1,5 @@
 import { Resend } from 'resend';
-import { ImpactBrief } from '../../scheduler/src/types';
+import { ImpactBrief } from './types.js';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 

@@ -52,8 +52,8 @@ supabase/.temp/
 # Personal notes
 PROFILE.md
 
-# Package lock files (auto-generated)
-package-lock.json
+# Package lock files — committed for reproducible builds
+# package-lock.json
 pnpm-lock.yaml
 
 # AI Studio exports (corrupted zip — re-export needed)

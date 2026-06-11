@@ -7,6 +7,7 @@ import { Queue, Worker } from 'bullmq';
 import { Redis } from 'ioredis';
 import { GoogleGenAI, Type } from '@google/genai';
 import { assertValidEnv, setupGracefulShutdown, registerServerShutdown, registerRedisShutdown, registerQueueShutdown, registerWorkerShutdown, RateLimiter } from './middleware/index.js';
+import { validateBody, validateParams, analyzeSchema, analyzeQueueSchema, autonomousAgentSchema, statusParamsSchema } from './middleware/validation.js';
 
 dotenv.config();
 assertValidEnv();
@@ -514,7 +515,7 @@ async function generateContentWithRetryAndFallback(params: {
   contents: string;
   config?: any;
 }) {
-  const models = ['gemini-3.5-flash', 'gemini-3.1-flash-lite', 'gemini-flash-latest'];
+  const models = ['gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-2.5-flash'];
   let lastError: any = null;
 
   for (const model of models) {
@@ -554,6 +555,11 @@ async function generateContentWithRetryAndFallback(params: {
   throw lastError || new Error('All models and retries failed.');
 }
 
+// Health check endpoint for Docker/K8s probes
+app.get('/health', (_req, res) => {
+  res.json({ status: 'ok', uptime: process.uptime(), redisConnected });
+});
+
 // REST Endpoints
 
 // Endpoint: Download clean project ZIP
@@ -582,12 +588,9 @@ app.get('/api/download-zip', (_req, res) => {
 });
 
 // Endpoint: Direct sync evaluation
-app.post('/api/analyze', async (req, res) => {
+app.post('/api/analyze', validateBody(analyzeSchema), async (req, res) => {
   try {
     const { packageJson } = req.body;
-    if (!packageJson) {
-      return res.status(400).json({ error: 'packageJson content is required.' });
-    }
 
     let parsed;
     try {
@@ -620,11 +623,8 @@ Return analytics as JSON conforming to schema.`,
 });
 
 // Endpoint: Queue a new analysis job using BullMQ or fallback to Memory Queue
-app.post('/api/analyze-queue', async (req, res) => {
+app.post('/api/analyze-queue', validateBody(analyzeQueueSchema), async (req, res) => {
   const { packageJson } = req.body;
-  if (!packageJson) {
-    return res.status(400).json({ error: 'packageJson content is required.' });
-  }
 
   if (redisClient && redisConnected) {
     const limiter = new RateLimiter(redisClient);
@@ -654,7 +654,7 @@ app.post('/api/analyze-queue', async (req, res) => {
 });
 
 // Endpoint: Fetch job progress/status and result
-app.get('/api/status/:jobId', async (req, res) => {
+app.get('/api/status/:jobId', validateParams(statusParamsSchema), async (req, res) => {
   const { jobId } = req.params;
 
   if (redisConnected && analysisQueue) {
@@ -766,11 +766,8 @@ app.post('/api/redis-purge', async (_req, res) => {
 });
 
 // Endpoint: Autonomous Agent Workspace Loop (Bright Data + Cognee + TriggerWare)
-app.post('/api/autonomous-agent', async (req, res) => {
+app.post('/api/autonomous-agent', validateBody(autonomousAgentSchema), async (req, res) => {
   const { query } = req.body;
-  if (!query) {
-    return res.status(400).json({ error: 'QUERY_REQUIRED', message: 'Target package or GitHub repository URL is required.' });
-  }
 
   const cleanQuery = query.trim();
   let result: any = null;
@@ -780,7 +777,7 @@ app.post('/api/autonomous-agent', async (req, res) => {
     const ai = getGeminiClient();
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
+      model: "gemini-2.0-flash",
       contents: `You are an Autonomous Cybersecurity Scraper & Intelligence Solver Agent.
 Analyze this user request: "${cleanQuery}".
 

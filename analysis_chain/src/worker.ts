@@ -2,11 +2,11 @@ import { createClient } from '@supabase/supabase-js';
 import { Worker } from 'bullmq';
 import IORedis from 'ioredis';
 import { runAnalysisChain } from './chain';
-import { ScrapeBundle } from '../../scheduler/src/types';
-import { assessRisk } from '../../scheduler/src/security';
-import { WorkerMonitor } from '../../scheduler/src/monitor';
-import { assertValidEnv } from '../../scheduler/src/security/env-validator';
-import { setupGracefulShutdown, registerWorkerShutdown, registerRedisShutdown } from '../../scheduler/src/resilience/shutdown';
+import { ScrapeBundle } from './types.js';
+import { assessRisk } from '../../scheduler/src/security/index.js';
+import { WorkerMonitor } from '../../scheduler/src/monitor.js';
+import { assertValidEnv } from '../../scheduler/src/security/env-validator.js';
+import { setupGracefulShutdown, registerWorkerShutdown, registerRedisShutdown } from '../../scheduler/src/resilience/shutdown.js';
 
 assertValidEnv('analysis');
 setupGracefulShutdown();

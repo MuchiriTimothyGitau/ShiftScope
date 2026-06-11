@@ -4,9 +4,9 @@ import IORedis from 'ioredis';
 import { sendSlackAlert } from './slack';
 import { sendEmailAlert } from './email';
 import { sendWebhookAlert } from './webhook';
-import { ImpactBrief } from '../../scheduler/src/types';
-import { assertValidEnv } from '../../scheduler/src/security/env-validator';
-import { setupGracefulShutdown, registerWorkerShutdown, registerRedisShutdown } from '../../scheduler/src/resilience/shutdown';
+import { ImpactBrief } from './types.js';
+import { assertValidEnv } from '../../scheduler/src/security/env-validator.js';
+import { setupGracefulShutdown, registerWorkerShutdown, registerRedisShutdown } from '../../scheduler/src/resilience/shutdown.js';
 
 assertValidEnv('delivery');
 setupGracefulShutdown();
