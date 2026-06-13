@@ -1,0 +1,37 @@
+name: 'ShiftScope Dependency Scan'
+description: 'Scan lockfiles for vulnerable, deprecated, or typosquatted dependencies'
+author: 'ShiftScope'
+
+inputs:
+  lockfile-path:
+    description: 'Path to the lockfile or manifest (package.json, requirements.txt, Cargo.lock, go.sum)'
+    required: false
+    default: 'package.json'
+  ecosystem:
+    description: 'Ecosystem hint (npm, pypi, crates, go). Auto-detected from filename if omitted'
+    required: false
+    default: ''
+  fail-on:
+    description: 'Minimum severity to fail the workflow (none, low, medium, high, critical)'
+    required: false
+    default: 'high'
+  supabase-url:
+    description: 'Supabase project URL (optional, skips DB write if omitted)'
+    required: false
+    default: ''
+  supabase-key:
+    description: 'Supabase service role key (optional)'
+    required: false
+    default: ''
+
+outputs:
+  findings-count:
+    description: 'Total number of findings'
+  risk-score:
+    description: 'Overall risk score (0-10)'
+  findings-json:
+    description: 'Full findings as JSON string'
+
+runs:
+  using: 'node20'
+  main: 'dist/index.js'

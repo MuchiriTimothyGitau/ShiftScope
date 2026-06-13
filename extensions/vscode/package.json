@@ -1,0 +1,76 @@
+{
+  "name": "shiftscope",
+  "displayName": "ShiftScope",
+  "description": "Dependency risk analysis — scan lockfiles for vulnerable, deprecated, or typosquatted packages",
+  "version": "1.0.0",
+  "publisher": "shiftScope",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MuchiriTimothyGitau/ShiftScope"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Linters",
+    "Security"
+  ],
+  "activationEvents": [],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "shiftscope.scanFile",
+        "title": "ShiftScope: Scan Current File"
+      },
+      {
+        "command": "shiftscope.scanWorkspace",
+        "title": "ShiftScope: Scan Workspace Dependencies"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "shiftscope.scanFile",
+          "group": "ShiftScope"
+        }
+      ],
+      "editor/title/context": [
+        {
+          "command": "shiftscope.scanFile",
+          "group": "ShiftScope"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "ShiftScope",
+      "properties": {
+        "shiftscope.apiUrl": {
+          "type": "string",
+          "default": "http://localhost:9090",
+          "description": "ShiftScope API server URL (leave empty to use built-in parser)"
+        },
+        "shiftscope.failOn": {
+          "type": "string",
+          "default": "high",
+          "enum": ["none", "low", "medium", "high", "critical"],
+          "description": "Minimum severity to highlight as error"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "build": "npx -y esbuild src/extension.ts --bundle --platform=node --target=node18 --outfile=dist/extension.js --external:vscode",
+    "watch": "npm run build -- --watch",
+    "package": "npx -y vsce package"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^20.0.0",
+    "esbuild": "^0.20.0",
+    "typescript": "^5.4.0",
+    "@vscode/vsce": "^2.24.0"
+  }
+}
